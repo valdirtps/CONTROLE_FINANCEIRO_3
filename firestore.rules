@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(data) {
+      return isSignedIn() && (!('userId' in data) || data.userId == request.auth.uid);
+    }
+
+    // Users (admin profiles)
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Debtors
+    match /debtors/{id} {
+      allow read, delete: if isOwner(resource.data);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Accounts
+    match /accounts/{id} {
+      allow read, delete: if isOwner(resource.data);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Launch Types (categories)
+    match /launchTypes/{id} {
+      allow read, delete: if isOwner(resource.data);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Transactions (lancamentos)
+    match /transactions/{id} {
+      allow read, delete: if isOwner(resource.data);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Parcelas
+    match /parcelas/{id} {
+      allow read, delete: if isOwner(resource.data);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Events
+    match /events/{id} {
+      allow read, delete: if isOwner(resource.data);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

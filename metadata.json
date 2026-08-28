@@ -1,0 +1,8 @@
+{
+  "name": "FinancePro",
+  "description": "Sistema de gestão financeira pessoal com controle de receitas, despesas, parcelamentos e devedores.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

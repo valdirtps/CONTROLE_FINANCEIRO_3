@@ -1,0 +1,127 @@
+{
+  "entities": {
+    "Administrador": {
+      "title": "Administrador",
+      "description": "Informações do perfil do administrador",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string" },
+        "email": { "type": "string" },
+        "cpf": { "type": "string" },
+        "telefone": { "type": "string" },
+        "endereco": { "type": "string" },
+        "cidade": { "type": "string" },
+        "estado": { "type": "string" }
+      },
+      "required": ["nome", "email"]
+    },
+    "Devedor": {
+      "title": "Devedor",
+      "description": "Pessoa que deve valores ao administrador",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string" },
+        "cpf": { "type": "string" },
+        "telefone": { "type": "string" },
+        "email": { "type": "string" },
+        "observacoes": { "type": "string" }
+      },
+      "required": ["nome", "cpf", "telefone", "email"]
+    },
+    "Conta": {
+      "title": "Conta",
+      "description": "Bancos ou carteiras",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string" },
+        "descricao": { "type": "string" }
+      },
+      "required": ["nome"]
+    },
+    "TipoLancamento": {
+      "title": "Tipo de Lançamento",
+      "description": "Categorias de receitas ou despesas",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string" },
+        "flagMatematica": { "type": "string", "enum": ["+", "-"] },
+        "dv": { "type": "boolean" }
+      },
+      "required": ["nome", "flagMatematica"]
+    },
+    "Lancamento": {
+      "title": "Lançamento",
+      "description": "Registro principal de uma transação financeira",
+      "type": "object",
+      "properties": {
+        "tipoLancamentoId": { "type": "string" },
+        "contaId": { "type": "string" },
+        "devedorId": { "type": "string" },
+        "dividirConta": { "type": "boolean" },
+        "valorTotal": { "type": "number" },
+        "numParcelas": { "type": "number" },
+        "referente": { "type": "string" },
+        "dataCompra": { "type": "string" }
+      },
+      "required": ["tipoLancamentoId", "contaId", "valorTotal", "numParcelas", "referente", "dataCompra"]
+    },
+    "Parcela": {
+      "title": "Parcela",
+      "description": "Parcela individual de um lançamento",
+      "type": "object",
+      "properties": {
+        "lancamentoId": { "type": "string" },
+        "numeroParcela": { "type": "number" },
+        "totalParcelas": { "type": "number" },
+        "valorAdministrador": { "type": "number" },
+        "valorDevedor": { "type": "number" },
+        "dataVencimento": { "type": "string" },
+        "situacao": { "type": "string", "enum": ["Pendente", "Pago"] }
+      },
+      "required": ["lancamentoId", "numeroParcela", "totalParcelas", "valorAdministrador", "valorDevedor", "dataVencimento", "situacao"]
+    },
+    "Evento": {
+      "title": "Evento",
+      "description": "Evento agendado para lembretes",
+      "type": "object",
+      "properties": {
+        "titulo": { "type": "string" },
+        "descricao": { "type": "string" },
+        "data": { "type": "string" },
+        "finalizado": { "type": "boolean" },
+        "userId": { "type": "string" }
+      },
+      "required": ["titulo", "data", "finalizado", "userId"]
+    }
+  },
+  "firestore": {
+    "settings/admin": {
+      "schema": { "$ref": "Administrador" },
+      "description": "Configurações globais do administrador"
+    },
+    "debtors": {
+      "schema": { "$ref": "Devedor" },
+      "description": "Coleção de devedores"
+    },
+    "accounts": {
+      "schema": { "$ref": "Conta" },
+      "description": "Coleção de contas bancárias"
+    },
+    "launchTypes": {
+      "schema": { "$ref": "TipoLancamento" },
+      "description": "Coleção de tipos de lançamentos"
+    },
+    "transactions": {
+      "schema": { "$ref": "Lancamento" },
+      "description": "Coleção de lançamentos principais"
+    },
+    "parcelas": {
+      "schema": { "$ref": "Parcela" },
+      "description": "Coleção de parcelas individuais"
+    },
+    "events": {
+      "schema": { "$ref": "Evento" },
+      "description": "Coleção de eventos da agenda"
+    }
+  }
+}
