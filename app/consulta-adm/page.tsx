@@ -122,17 +122,25 @@ export default function ConsultaADMPage() {
 
     const totalValor = finalFilteredData.reduce((acc, curr) => acc + curr.valorTotal, 0);
     const totalDevedor = finalFilteredData.reduce((acc, curr) => acc + curr.valorDevedor, 0);
+    const totalLiquido = totalValor - totalDevedor;
 
     autoTable(doc, {
       startY: 35,
       head: [['Vencimento', 'Conta', 'Parcela', 'Valor Parcela', 'Referente', 'Devedor', 'Valor Devedor']],
       body: tableData,
-      foot: [[
-        { content: 'TOTAL GERAL:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
-        { content: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValor), styles: { fontStyle: 'bold' } },
-        { content: '', colSpan: 2 },
-        { content: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDevedor), styles: { fontStyle: 'bold' } }
-      ]],
+      foot: [
+        [
+          { content: 'TOTAL GERAL:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
+          { content: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValor), styles: { fontStyle: 'bold' } },
+          { content: '', colSpan: 2 },
+          { content: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDevedor), styles: { fontStyle: 'bold' } }
+        ],
+        [
+          { content: 'TOTAL LÍQUIDO A PAGAR:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
+          { content: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalLiquido), styles: { fontStyle: 'bold', textColor: [5, 150, 105] } },
+          { content: '', colSpan: 3 }
+        ]
+      ],
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
       bodyStyles: { fontSize: 8 },
@@ -143,7 +151,8 @@ export default function ConsultaADMPage() {
       }
     });
 
-    doc.save(`relatorio-pagar-${selectedVencimento}.pdf`);
+    const timestampName = format(new Date(), 'yyyyMMdd_HHmmss');
+    doc.save(`relatorio-pagar-${selectedVencimento}-${timestampName}.pdf`);
   };
 
   if (loading) {
@@ -334,6 +343,19 @@ export default function ConsultaADMPage() {
                         )}
                       </span>
                     </td>
+                  </tr>
+                  <tr className="border-t border-slate-200">
+                    <td colSpan={3} className="px-4 py-1 text-[10px] font-black text-slate-900 uppercase tracking-widest text-right">
+                      Total Líquido a Pagar:
+                    </td>
+                    <td className="px-4 py-1 text-right">
+                      <span className="text-sm font-black text-emerald-600">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                          finalFilteredData.reduce((acc, curr) => acc + curr.valorTotal, 0) - finalFilteredData.reduce((acc, curr) => acc + curr.valorDevedor, 0)
+                        )}
+                      </span>
+                    </td>
+                    <td colSpan={3}></td>
                   </tr>
                 </tfoot>
               )}
