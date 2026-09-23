@@ -21,7 +21,9 @@ import {
   Lancamento, 
   Parcela,
   SituacaoParcela,
-  Evento
+  Evento,
+  Investimento,
+  LancamentoInvestimento
 } from '@/types/finance';
 import { addMonths, format } from 'date-fns';
 
@@ -52,6 +54,11 @@ interface FirestoreErrorInfo {
 }
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  // If the user signed out, permission-denied is expected during listener cleanup - do NOT crash the app
+  if (!auth.currentUser) {
+    console.warn(`Firestore operation '${operationType}' on '${path}' ignored because user is signed out.`);
+    return;
+  }
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -67,8 +74,14 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     },
     operationType,
     path
+  };
+  console.warn('Firestore Operation Notice: ', JSON.stringify(errInfo));
+  
+  // For queries/snapshots (LIST/GET), never throw unhandled errors that crash the WebView
+  if (operationType === OperationType.LIST || operationType === OperationType.GET) {
+    return;
   }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -404,6 +417,101 @@ export const FirestoreService = {
       await deleteDoc(doc(db, 'events', id));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'events');
+    }
+  },
+
+  // Investments (Ativos)
+  getInvestimentos: (callback: (data: Investimento[]) => void) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return () => {};
+    const q = query(collection(db, 'investments'), where('userId', '==', uid));
+    return onSnapshot(q, (s) => {
+      callback(s.docs.map(d => ({ id: d.id, ...d.data() } as Investimento)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'investments');
+    });
+  },
+
+  addInvestimento: async (data: Omit<Investimento, 'id'>) => {
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      await addDoc(collection(db, 'investments'), {
+        ...data,
+        userId: uid,
+        ativo: data.ativo ?? true,
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'investments');
+    }
+  },
+
+  updateInvestimento: async (id: string, data: Partial<Investimento>) => {
+    const path = `investments/${id}`;
+    try {
+      await updateDoc(doc(db, 'investments', id), data);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  },
+
+  deleteInvestimento: async (id: string) => {
+    const path = `investments/${id}`;
+    try {
+      // Also delete related investment entries
+      const q = query(collection(db, 'investment_entries'), where('investimentoId', '==', id));
+      const s = await getDocs(q);
+      const batchDeletes = s.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(batchDeletes);
+
+      await deleteDoc(doc(db, 'investments', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
+  // Investment Entries (Lançamentos de saldo / evolução mensal)
+  getLancamentosInvestimento: (callback: (data: LancamentoInvestimento[]) => void) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return () => {};
+    const q = query(collection(db, 'investment_entries'), where('userId', '==', uid));
+    return onSnapshot(q, (s) => {
+      callback(s.docs.map(d => ({ id: d.id, ...d.data() } as LancamentoInvestimento)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'investment_entries');
+    });
+  },
+
+  addLancamentoInvestimento: async (data: Omit<LancamentoInvestimento, 'id'>) => {
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      await addDoc(collection(db, 'investment_entries'), {
+        ...data,
+        userId: uid,
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'investment_entries');
+    }
+  },
+
+  updateLancamentoInvestimento: async (id: string, data: Partial<LancamentoInvestimento>) => {
+    const path = `investment_entries/${id}`;
+    try {
+      await updateDoc(doc(db, 'investment_entries', id), data);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  },
+
+  deleteLancamentoInvestimento: async (id: string) => {
+    const path = `investment_entries/${id}`;
+    try {
+      await deleteDoc(doc(db, 'investment_entries', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
     }
   }
 };

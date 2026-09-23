@@ -19,10 +19,14 @@ import {
   Lock,
   Sliders,
   ClipboardList,
-  ShieldCheck
+  ShieldCheck,
+  TrendingUp,
+  KeyRound
 } from 'lucide-react';
 import { useFinance } from '@/context/FinanceContext';
 import { useAuth } from '@/components/FirebaseProvider';
+import { usePinSecurity } from '@/context/PinSecurityContext';
+import { PinSecurityGuard } from '@/components/PinSecurityGuard';
 import { auth } from '@/lib/firebase';
 import { FirestoreService } from '@/lib/firestore-service';
 import { signOut } from 'firebase/auth';
@@ -38,6 +42,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const { currentMonth, setCurrentMonth, allLancamentosCompletos, eventos } = useFinance();
   const { user, loading: authLoading, loginWithGoogle, loginWithEmail, registerWithEmail, resetPassword, logout } = useAuth();
+  const { lockSession, isPinEnabled } = usePinSecurity();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -247,6 +252,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { name: 'Lançamentos', icon: ListFilter, href: '/lancamentos' },
     { name: 'Valores a Receber', icon: ListFilter, href: '/consulta-devedores' },
     { name: 'Valores a Pagar', icon: ClipboardList, href: '/consulta-adm' },
+    { name: 'Investimentos', icon: TrendingUp, href: '/investimentos' },
     { name: 'Contas', icon: Wallet, href: '/contas' },
     { name: 'Devedores', icon: Users, href: '/devedores' },
     { name: 'Agenda', icon: Calendar, href: '/agenda' },
@@ -516,7 +522,17 @@ export function AppLayout({ children }: AppLayoutProps) {
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-800 shrink-0 space-y-2">
+        <div className="p-3 border-t border-slate-800 shrink-0 space-y-1.5">
+          {isPinEnabled && (
+            <button 
+              onClick={lockSession}
+              className="flex items-center gap-3.5 px-3.5 py-2.5 w-full hover:bg-emerald-500/10 hover:text-emerald-400 rounded-xl text-slate-300 transition-colors text-xs font-semibold"
+              title="Bloquear menus financeiros com PIN"
+            >
+              <KeyRound size={18} className="shrink-0 text-emerald-400" />
+              <span className={`${!isSidebarOpen && 'hidden'}`}>Bloquear com PIN</span>
+            </button>
+          )}
           <Link 
             href="/super-admin"
             className="flex items-center gap-3.5 px-3.5 py-2 w-full hover:bg-slate-800 hover:text-white rounded-xl text-slate-500 transition-colors text-[10px] font-black uppercase tracking-widest"
@@ -526,7 +542,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </Link>
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-3.5 px-3.5 py-3 w-full hover:bg-rose-500/10 hover:text-rose-400 rounded-xl text-slate-400 transition-colors text-sm font-semibold"
+            className="flex items-center gap-3.5 px-3.5 py-2.5 w-full hover:bg-rose-500/10 hover:text-rose-400 rounded-xl text-slate-400 transition-colors text-sm font-semibold"
           >
             <LogOut size={19} className="shrink-0" />
             <span className={`${!isSidebarOpen && 'hidden'}`}>Encerrar Sessão</span>
@@ -550,12 +566,25 @@ export function AppLayout({ children }: AppLayoutProps) {
             <Menu size={24} />
           </button>
           <span className="font-black tracking-tighter text-slate-900">FINANCEPRO</span>
-          <div className="w-10" />
+          <div className="flex items-center gap-2">
+            {isPinEnabled && (
+              <button
+                onClick={lockSession}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider active:scale-95 transition-transform"
+                title="Bloquear acesso com PIN"
+              >
+                <KeyRound size={14} className="text-emerald-400" />
+                <span>Bloquear</span>
+              </button>
+            )}
+          </div>
         </header>
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto bg-[#ebf0f5] relative">
-          {children}
+          <PinSecurityGuard>
+            {children}
+          </PinSecurityGuard>
         </div>
       </main>
     </div>

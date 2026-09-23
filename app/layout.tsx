@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { FirebaseProvider } from "@/components/FirebaseProvider";
+import { PinSecurityProvider } from "@/context/PinSecurityContext";
 import { FinanceProvider } from "@/context/FinanceContext";
 import { InactivityHandler } from "@/components/InactivityHandler";
 import { Toaster } from "sonner";
@@ -25,11 +26,13 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={`${inter.variable} font-sans`}>
         <FirebaseProvider>
-          <FinanceProvider>
-            <InactivityHandler />
-            {children}
-            <Toaster position="top-right" richColors />
-          </FinanceProvider>
+          <PinSecurityProvider>
+            <FinanceProvider>
+              <InactivityHandler />
+              {children}
+              <Toaster position="top-right" richColors />
+            </FinanceProvider>
+          </PinSecurityProvider>
         </FirebaseProvider>
       </body>
     </html>

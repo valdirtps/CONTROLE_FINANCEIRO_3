@@ -87,3 +87,33 @@ export interface LancamentoCompleto extends Parcela {
   valorDebitoDevedor?: number;
   isDV?: boolean;
 }
+
+export interface Investimento {
+  id: string;
+  userId?: string;
+  nome: string;
+  tipo?: string;
+  instituicao?: string;
+  descricao?: string;
+  ativo?: boolean;
+  createdAt?: any;
+}
+
+export interface LancamentoInvestimento {
+  id: string;
+  userId?: string;
+  investimentoId: string;
+  data: string; // formato YYYY-MM-DD
+  valorLiquido: number;
+  observacao?: string;
+  createdAt?: any;
+}
+
+export interface LancamentoInvestimentoCompleto extends LancamentoInvestimento {
+  investimentoNome: string;
+  investimentoTipo?: string;
+  investimentoInstituicao?: string;
+  valorAnterior?: number;
+  diferencaValor?: number;
+  percentualCrescimento?: number | null;
+}

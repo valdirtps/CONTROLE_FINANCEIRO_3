@@ -92,6 +92,33 @@
         "userId": { "type": "string" }
       },
       "required": ["titulo", "data", "finalizado", "userId"]
+    },
+    "Investimento": {
+      "title": "Investimento",
+      "description": "Ativo ou produto de investimento financeiro",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string" },
+        "tipo": { "type": "string" },
+        "instituicao": { "type": "string" },
+        "descricao": { "type": "string" },
+        "ativo": { "type": "boolean" },
+        "userId": { "type": "string" }
+      },
+      "required": ["nome"]
+    },
+    "LancamentoInvestimento": {
+      "title": "LancamentoInvestimento",
+      "description": "Lançamento de evolução periódica/mensal do valor líquido de um investimento",
+      "type": "object",
+      "properties": {
+        "investimentoId": { "type": "string" },
+        "data": { "type": "string" },
+        "valorLiquido": { "type": "number" },
+        "observacao": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["investimentoId", "data", "valorLiquido"]
     }
   },
   "firestore": {
@@ -122,6 +149,14 @@
     "events": {
       "schema": { "$ref": "Evento" },
       "description": "Coleção de eventos da agenda"
+    },
+    "investments": {
+      "schema": { "$ref": "Investimento" },
+      "description": "Coleção de investimentos do usuário"
+    },
+    "investment_entries": {
+      "schema": { "$ref": "LancamentoInvestimento" },
+      "description": "Coleção de lançamentos de saldo de investimentos"
     }
   }
 }

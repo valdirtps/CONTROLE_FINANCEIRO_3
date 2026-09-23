@@ -9,7 +9,10 @@ import {
   Parcela,
   LancamentoCompleto,
   Administrador,
-  Evento
+  Evento,
+  Investimento,
+  LancamentoInvestimento,
+  LancamentoInvestimentoCompleto
 } from '@/types/finance';
 import { FirestoreService } from '@/lib/firestore-service';
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
@@ -25,6 +28,9 @@ interface FinanceContextType {
   allLancamentosCompletos: LancamentoCompleto[];
   admin: Administrador | null;
   eventos: Evento[];
+  investimentos: Investimento[];
+  lancamentosInvestimentos: LancamentoInvestimento[];
+  lancamentosInvestimentosCompletos: LancamentoInvestimentoCompleto[];
   currentMonth: Date;
   setCurrentMonth: (date: Date) => void;
   loading: boolean;
@@ -45,6 +51,12 @@ interface FinanceContextType {
   addEvento: (data: Omit<Evento, 'id'>) => Promise<void>;
   updateEvento: (id: string, data: Partial<Evento>) => Promise<void>;
   deleteEvento: (id: string) => Promise<void>;
+  addInvestimento: (data: Omit<Investimento, 'id'>) => Promise<void>;
+  updateInvestimento: (id: string, data: Partial<Investimento>) => Promise<void>;
+  deleteInvestimento: (id: string) => Promise<void>;
+  addLancamentoInvestimento: (data: Omit<LancamentoInvestimento, 'id'>) => Promise<void>;
+  updateLancamentoInvestimento: (id: string, data: Partial<LancamentoInvestimento>) => Promise<void>;
+  deleteLancamentoInvestimento: (id: string) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -56,6 +68,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
+  const [investimentos, setInvestimentos] = useState<Investimento[]>([]);
+  const [lancamentosInvestimentos, setLancamentosInvestimentos] = useState<LancamentoInvestimento[]>([]);
   const [admin, setAdmin] = useState<Administrador | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [loading, setLoading] = useState(true);
@@ -76,6 +90,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const unsubLancamentos = FirestoreService.getLancamentos(setLancamentos);
     const unsubParcelas = FirestoreService.getParcelas(setParcelas);
     const unsubEventos = FirestoreService.getEventos(setEventos);
+    const unsubInvestimentos = FirestoreService.getInvestimentos(setInvestimentos);
+    const unsubLancInvest = FirestoreService.getLancamentosInvestimento(setLancamentosInvestimentos);
     
     FirestoreService.getAdmin().then(data => {
       if (data) {
@@ -109,6 +125,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       unsubLancamentos();
       unsubParcelas();
       unsubEventos();
+      unsubInvestimentos();
+      unsubLancInvest();
     };
   }, [user, authLoading]);
 
@@ -172,6 +190,56 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     });
   }, [allLancamentosCompletos, currentMonth]);
 
+  const lancamentosInvestimentosCompletos: LancamentoInvestimentoCompleto[] = React.useMemo(() => {
+    const investMap = new Map(investimentos.map(inv => [inv.id, inv]));
+    
+    // Group entries by investment
+    const byInvest = new Map<string, LancamentoInvestimento[]>();
+    lancamentosInvestimentos.forEach(entry => {
+      const list = byInvest.get(entry.investimentoId) || [];
+      list.push(entry);
+      byInvest.set(entry.investimentoId, list);
+    });
+
+    const result: LancamentoInvestimentoCompleto[] = [];
+
+    byInvest.forEach((entries, investId) => {
+      const invest = investMap.get(investId);
+      // Sort chronologically ascending
+      const sorted = [...entries].sort((a, b) => a.data.localeCompare(b.data));
+
+      sorted.forEach((entry, index) => {
+        let valorAnterior: number | undefined = undefined;
+        let diferencaValor: number = 0;
+        let percentualCrescimento: number | null = null;
+
+        if (index > 0) {
+          const prev = sorted[index - 1];
+          valorAnterior = prev.valorLiquido;
+          diferencaValor = entry.valorLiquido - prev.valorLiquido;
+          if (prev.valorLiquido !== 0) {
+            percentualCrescimento = ((entry.valorLiquido - prev.valorLiquido) / Math.abs(prev.valorLiquido)) * 100;
+          } else {
+            percentualCrescimento = 0;
+          }
+        }
+
+        result.push({
+          ...entry,
+          investimentoNome: invest?.nome || 'Investimento não identificado',
+          investimentoTipo: invest?.tipo,
+          investimentoInstituicao: invest?.instituicao,
+          valorAnterior,
+          diferencaValor,
+          percentualCrescimento
+        });
+      });
+    });
+
+    // Return sorted descending by date for default display
+    return result.sort((a, b) => b.data.localeCompare(a.data));
+  }, [investimentos, lancamentosInvestimentos]);
+
   const value = {
     devedores,
     contas,
@@ -182,6 +250,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     allLancamentosCompletos,
     admin,
     eventos,
+    investimentos,
+    lancamentosInvestimentos,
+    lancamentosInvestimentosCompletos,
     currentMonth,
     setCurrentMonth,
     loading,
@@ -204,7 +275,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
     addEvento: FirestoreService.addEvento,
     updateEvento: FirestoreService.updateEvento,
-    deleteEvento: FirestoreService.deleteEvento
+    deleteEvento: FirestoreService.deleteEvento,
+    addInvestimento: FirestoreService.addInvestimento,
+    updateInvestimento: FirestoreService.updateInvestimento,
+    deleteInvestimento: FirestoreService.deleteInvestimento,
+    addLancamentoInvestimento: FirestoreService.addLancamentoInvestimento,
+    updateLancamentoInvestimento: FirestoreService.updateLancamentoInvestimento,
+    deleteLancamentoInvestimento: FirestoreService.deleteLancamentoInvestimento
   };
 
   return (

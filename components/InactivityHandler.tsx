@@ -2,39 +2,48 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './FirebaseProvider';
+import { usePinSecurity } from '@/context/PinSecurityContext';
 import { toast } from 'sonner';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 
-const INACTIVITY_LIMIT = 60 * 1000; // 1 minuto
+const INACTIVITY_LIMIT = 60 * 1000; // 1 minuto de inatividade
 const WARNING_THRESHOLD = 15 * 1000; // Aviso faltando 15 segundos
-const CHECK_INTERVAL = 1000; // Verificar a cada segundo
+const CHECK_INTERVAL = 1000; // Checagem a cada segundo
 const STORAGE_KEY = 'finance_pro_last_activity_v3';
 
 export function InactivityHandler() {
   const { user } = useAuth();
+  const { lockSession, isLocked } = usePinSecurity();
   
   const userRef = useRef(user);
-  const isProcessingLogout = useRef(false);
+  const isLockedRef = useRef(isLocked);
+  const isProcessingLock = useRef(false);
   const warningShown = useRef(false);
   const lastMousePos = useRef({ x: 0, y: 0 });
 
-  // Sincronizar usuário
+  // Sincronizar referências
   useEffect(() => {
     userRef.current = user;
     if (user) {
-      console.log('InactivityHandler: Usuário monitorado:', user.email);
-      isProcessingLogout.current = false;
+      isProcessingLock.current = false;
       warningShown.current = false;
     }
   }, [user]);
 
+  useEffect(() => {
+    isLockedRef.current = isLocked;
+    if (isLocked) {
+      // Já está bloqueado, não precisa de aviso
+      warningShown.current = false;
+      toast.dismiss('inactivity-warning');
+    }
+  }, [isLocked]);
+
   const updateActivity = useCallback(() => {
-    if (userRef.current && !isProcessingLogout.current) {
+    if (userRef.current && !isProcessingLock.current) {
       try {
         localStorage.setItem(STORAGE_KEY, Date.now().toString());
       } catch (e) {
-        // Silenciar erros de storage em iframes restritos
+        // Silenciar erros de storage
       }
     }
   }, []);
@@ -45,11 +54,11 @@ export function InactivityHandler() {
       return;
     }
 
-    // Inicialização
+    // Inicialização da contagem
     updateActivity();
 
-    const checkInactivity = async () => {
-      if (!userRef.current || isProcessingLogout.current) return;
+    const checkInactivity = () => {
+      if (!userRef.current || isProcessingLock.current || isLockedRef.current) return;
 
       let lastActivityStr = null;
       try {
@@ -65,56 +74,43 @@ export function InactivityHandler() {
       const now = Date.now();
       const diff = now - lastActivity;
 
-      // Log informativo a cada 10s no console (F12)
-      if (Math.floor(diff / 1000) % 10 === 0 && diff > 0) {
-        console.log(`[Monitor] Inativo há ${Math.floor(diff / 1000)}s de 60s`);
-      }
-
-      // Aviso visual
+      // Aviso visual faltando 15 segundos (apenas se a tela não estiver bloqueada)
       if (diff >= (INACTIVITY_LIMIT - WARNING_THRESHOLD) && diff < INACTIVITY_LIMIT) {
         if (!warningShown.current) {
           warningShown.current = true;
-          toast.warning('Sessão expirando', {
+          toast.warning('Bloqueio por inatividade', {
             id: 'inactivity-warning',
-            description: 'Sua sessão será encerrada em 15 segundos por inatividade.',
+            description: 'O sistema será bloqueado em 15 segundos para proteger seus dados.',
             duration: 10000,
           });
         }
       }
 
-      // Logout se passar de 1 minuto
+      // Bloqueia e volta à tela de entrada ao passar do limite
       if (diff >= INACTIVITY_LIMIT) {
-        isProcessingLogout.current = true;
-        console.warn('!!! Limite de inatividade atingido. Executando logout...');
+        isProcessingLock.current = true;
+        toast.dismiss('inactivity-warning');
         
         try {
-          toast.dismiss('inactivity-warning');
-          await signOut(auth);
-          try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-          
-          toast.error('Sessão encerrada', {
-            description: 'Você foi desconectado por segurança.',
-            duration: Infinity,
-          });
-
-          // Redirecionamento forçado após pequeno delay para o usuário ver o toast
+          updateActivity();
+          // Trava a sessão e exibe a tela de PIN imediatamente
+          lockSession();
+        } catch (e) {
+          console.error('Erro ao bloquear sessão por inatividade:', e);
+        } finally {
           setTimeout(() => {
-            window.location.href = '/';
-          }, 1500);
-
-        } catch (error) {
-          console.error('Erro no logout automático:', error);
-          isProcessingLogout.current = false;
+            isProcessingLock.current = false;
+          }, 1000);
         }
       }
     };
 
     const intervalId = setInterval(checkInactivity, CHECK_INTERVAL);
 
-    // Filtro de movimento de mouse para ignorar trepidações de extensões
+    // Filtro de movimento de mouse para ignorar trepidações
     const handleMouseMove = (e: MouseEvent) => {
       const dist = Math.abs(e.clientX - lastMousePos.current.x) + Math.abs(e.clientY - lastMousePos.current.y);
-      if (dist > 50) { // Exige um movimento real de 50 pixels
+      if (dist > 50) {
         lastMousePos.current = { x: e.clientX, y: e.clientY };
         updateActivity();
       }
@@ -122,7 +118,7 @@ export function InactivityHandler() {
 
     const handleIntentionalActivity = () => updateActivity();
 
-    // Eventos de monitoramento
+    // Eventos de monitoramento de atividade do usuário
     window.addEventListener('mousemove', handleMouseMove, { capture: true, passive: true });
     window.addEventListener('mousedown', handleIntentionalActivity, { capture: true, passive: true });
     window.addEventListener('keydown', handleIntentionalActivity, { capture: true, passive: true });
@@ -132,7 +128,6 @@ export function InactivityHandler() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('Tab focada: verificando inatividade imediatamente...');
         checkInactivity();
       }
     };
@@ -148,7 +143,7 @@ export function InactivityHandler() {
       window.removeEventListener('click', handleIntentionalActivity, true);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user, updateActivity]);
+  }, [user, updateActivity, lockSession]);
 
   return null;
 }

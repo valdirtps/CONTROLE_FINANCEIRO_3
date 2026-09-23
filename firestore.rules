@@ -56,6 +56,20 @@ service cloud.firestore {
       allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
     }
 
+    // Investments
+    match /investments/{id} {
+      allow read, delete: if isOwner(resource.data);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Investment entries
+    match /investment_entries/{id} {
+      allow read, delete: if isOwner(resource.data);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+    }
+
     // Default deny catch-all
     match /{document=**} {
       allow read, write: if false;
