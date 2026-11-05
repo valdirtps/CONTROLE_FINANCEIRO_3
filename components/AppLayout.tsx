@@ -241,7 +241,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         current.despesa += l.valorAdministrador;
       }
       current.credito += l.valorDevedor;
-      current.saldo = current.receita - current.despesa;
+      current.saldo = Math.round((current.receita - current.despesa + current.credito) * 100) / 100;
     });
 
     return Array.from(monthsMap.values()).sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());

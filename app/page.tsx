@@ -90,10 +90,11 @@ export default function Dashboard() {
         }
       }
       current.credito += l.valorDevedor;
-      
-      // O saldo deve refletir a posição líquida do administrador
-      const share = l.flagMatematica === '+' ? l.valorAdministrador : -l.valorAdministrador;
-      current.saldo += share;
+    });
+
+    // Saldo Líquido = RECEITA - VALORES A PAGAR + VALORES A RECEBER
+    datesMap.forEach(current => {
+      current.saldo = Math.round((current.receita - current.despesa + current.credito) * 100) / 100;
     });
 
     return Array.from(datesMap.values())
